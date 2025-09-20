@@ -58,6 +58,15 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
       },
+      backgroundImage: {
+        "sales-gradient": "var(--sales-gradient)",
+        "sales-gradient-soft": "var(--sales-gradient-soft)",
+        "success-gradient": "var(--success-gradient)",
+      },
+      boxShadow: {
+        "shadow-success": "var(--shadow-success)",
+        "shadow-soft": "var(--shadow-soft)",
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
