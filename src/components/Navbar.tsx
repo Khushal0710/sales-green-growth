@@ -21,23 +21,22 @@ const Navbar = () => {
             <div className="w-8 h-8 bg-sales-gradient rounded-lg flex items-center justify-center">
               <BarChart3 className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold text-primary">SalesAgent Pro</span>
+            <span className="text-xl font-bold text-primary">Inside Sales Agent</span>
           </div>
-          
+
           <div className="hidden md:flex items-center space-x-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
-              
+
               return (
                 <Link key={item.path} to={item.path}>
                   <Button
                     variant={isActive ? "default" : "ghost"}
-                    className={`flex items-center space-x-2 ${
-                      isActive 
-                        ? "bg-sales-gradient text-primary-foreground shadow-shadow-success" 
-                        : "hover:bg-accent hover:text-accent-foreground"
-                    }`}
+                    className={`flex items-center space-x-2 ${isActive
+                      ? "bg-sales-gradient text-primary-foreground shadow-shadow-success"
+                      : "hover:bg-accent hover:text-accent-foreground"
+                      }`}
                   >
                     <Icon className="w-4 h-4" />
                     <span>{item.label}</span>

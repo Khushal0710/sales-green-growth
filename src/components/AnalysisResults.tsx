@@ -4,9 +4,10 @@ import { CheckCircle, Plus } from "lucide-react";
 
 interface AnalysisResultsProps {
   result: string | null;
+  hideTitle?: boolean;
 }
 
-const AnalysisResults = ({ result }: AnalysisResultsProps) => {
+const AnalysisResults = ({ result, hideTitle }: AnalysisResultsProps) => {
   const handleAddToCRM = () => {
     // Add to CRM functionality
     console.log("Adding to CRM...");
@@ -15,12 +16,14 @@ const AnalysisResults = ({ result }: AnalysisResultsProps) => {
   if (!result) {
     return (
       <Card className="h-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-primary" />
-            Analysis Results
-          </CardTitle>
-        </CardHeader>
+        {!hideTitle && (
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-primary" />
+              Analysis Results
+            </CardTitle>
+          </CardHeader>
+        )}
         <CardContent className="flex items-center justify-center h-64">
           <div className="text-center text-muted-foreground">
             <CheckCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -34,21 +37,17 @@ const AnalysisResults = ({ result }: AnalysisResultsProps) => {
 
   return (
     <Card className="h-full">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center gap-2">
-          <CheckCircle className="w-5 h-5 text-primary" />
-          Analysis Results
-        </CardTitle>
-        <Button onClick={handleAddToCRM} size="sm" className="bg-primary hover:bg-primary/90">
-          <Plus className="w-4 h-4 mr-2" />
-          Add to CRM
-        </Button>
-      </CardHeader>
-      <CardContent>
-        <div 
-          className="prose prose-sm max-w-none"
-          dangerouslySetInnerHTML={{ __html: result }}
-        />
+      {!hideTitle && (
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Analysis Results</CardTitle>
+          <Button size="sm" variant="outline" onClick={handleAddToCRM}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add to CRM
+          </Button>
+        </CardHeader>
+      )}
+      <CardContent className={`${hideTitle ? 'p-0' : 'p-4'}`}>
+        <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: result }} />
       </CardContent>
     </Card>
   );

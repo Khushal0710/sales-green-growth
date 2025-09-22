@@ -1,257 +1,396 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { useEffect, useState } from "react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mail, Search, Plus, Copy, Edit, Trash2, Send, Star } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+
+interface EmailTemplate {
+  row_number: number;
+  "Email Templet ": string;
+  Company: string;
+  "Created At": string;
+  status?: 'Approved' | 'Rejected';
+  changeRequest?: string;
+}
 
 const EmailTemplates = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
+  const { toast } = useToast();
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<string>('');
+  const [editingRow, setEditingRow] = useState<number | null>(null);
+  const [editingStatus, setEditingStatus] = useState<'Approved' | 'Rejected'>('Approved');
+  const [editingChangeRequest, setEditingChangeRequest] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const templates = [
-    {
-      id: 1,
-      name: "Cold Outreach - Introduction",
-      category: "cold-outreach",
-      subject: "Quick question about [Company]'s [Pain Point]",
-      preview: "Hi [Name], I noticed that [Company] is working on [specific initiative]. I wanted to reach out because...",
-      openRate: "24%",
-      responseRate: "8%",
-      lastUsed: "2 days ago",
-      isStarred: true
-    },
-    {
-      id: 2,
-      name: "Follow-up After Demo",
-      category: "follow-up",
-      subject: "Thanks for your time today - Next steps for [Company]",
-      preview: "Hi [Name], Thank you for taking the time to see our demo today. As discussed, I wanted to follow up...",
-      openRate: "67%",
-      responseRate: "34%",
-      lastUsed: "5 hours ago",
-      isStarred: false
-    },
-    {
-      id: 3,
-      name: "Proposal Follow-up",
-      category: "follow-up",
-      subject: "Following up on our proposal for [Company]",
-      preview: "Hi [Name], I wanted to follow up on the proposal we sent last week. Do you have any questions about...",
-      openRate: "45%",
-      responseRate: "19%",
-      lastUsed: "1 week ago",
-      isStarred: true
-    },
-    {
-      id: 4,
-      name: "Meeting Request",
-      category: "meeting",
-      subject: "15-minute call to discuss [specific benefit] for [Company]?",
-      preview: "Hi [Name], I'd love to show you how [specific solution] could help [Company] achieve [specific goal]...",
-      openRate: "38%",
-      responseRate: "15%",
-      lastUsed: "3 days ago",
-      isStarred: false
-    },
-    {
-      id: 5,
-      name: "Re-engagement",
-      category: "nurture",
-      subject: "Checking in - Has anything changed at [Company]?",
-      preview: "Hi [Name], I hope you're doing well. I wanted to reach out because it's been a few months since...",
-      openRate: "31%",
-      responseRate: "12%",
-      lastUsed: "1 week ago",
-      isStarred: false
-    }
-  ];
+  const fetchTemplates = async () => {
+    try {
+      setLoading(true);
+      console.log('Fetching email templates from webhook...');
+      const response = await fetch('https://n8n.warpdrivetech.in/webhook/get-email-templet', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({})
+      });
 
-  const categories = [
-    { value: "all", label: "All Categories" },
-    { value: "cold-outreach", label: "Cold Outreach" },
-    { value: "follow-up", label: "Follow-up" },
-    { value: "meeting", label: "Meeting Request" },
-    { value: "nurture", label: "Nurture" }
-  ];
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case "cold-outreach": return "bg-blue-500 text-white";
-      case "follow-up": return "bg-success-gradient text-primary-foreground";
-      case "meeting": return "bg-purple-500 text-white";
-      case "nurture": return "bg-orange-500 text-white";
-      default: return "bg-muted";
+      const data = await response.json();
+      console.log('Received data:', data);
+
+      if (!Array.isArray(data)) {
+        console.warn('Expected an array of templates but received:', data);
+        setTemplates([]);
+      } else {
+        setTemplates(data);
+      }
+    } catch (err) {
+      console.error('Error fetching email templates:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const filteredTemplates = templates.filter(template => {
-    const matchesSearch = template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         template.subject.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === "all" || template.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
+  useEffect(() => {
+    // Initial fetch when component mounts
+    const timer = setTimeout(() => {
+      fetchTemplates();
+    }, 100);
+  }, []);
+
+  const processTemplate = (template: string) => {
+    if (!template) return '';
+
+    // Remove 'code' text
+    let processed = template.replace(/<p>code<\/p>/gi, '');
+
+    // Make subject line bold
+    processed = processed.replace(/(<p>Subject:)(.*?)(<\/p>)/gi,
+      (match, p1, p2, p3) =>
+        `<p><strong>${p1}${p2}${p3}</strong></p>`
+    );
+
+    return processed;
+  };
+
+  const handlePreview = (template: EmailTemplate) => {
+    const processedTemplate = processTemplate(template["Email Templet "]);
+    setSelectedTemplate(processedTemplate);
+    setSelectedCompany(template.Company);
+  };
+
+  const handleSaveAll = async () => {
+    if (templates.length === 0) {
+      setSaveStatus({ type: 'error', message: 'No templates to save' });
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveStatus(null);
+
+    try {
+      // Prepare the request data as a direct array
+      const requestData = templates.map(template => ({
+        row_number: template.row_number,
+        "Company": template.Company,
+        "Email Templet ": template["Email Templet "],
+        "status": template.status || 'Pending',
+        "changeRequest": template.changeRequest || ''
+      }));
+
+      console.log('Sending data:', JSON.stringify(requestData, null, 2));
+
+      const response = await fetch('https://n8n.warpdrivetech.in/webhook/c1bba515-a9e4-44ca-a8a0-bfa7f31e050e', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server response error:', errorText);
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+      }
+
+      try {
+        const result = await response.json();
+        console.log('Save successful:', result);
+        setSaveStatus({ type: 'success', message: 'Templates saved successfully!' });
+      } catch (e) {
+        console.log('Response was not JSON, but request might have succeeded');
+        setSaveStatus({ type: 'success', message: 'Templates saved successfully!' });
+      }
+    } catch (error) {
+      console.error('Error saving templates:', error);
+      setSaveStatus({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to save templates'
+      });
+    } finally {
+      setIsSaving(false);
+      // Clear the status message after 5 seconds
+      setTimeout(() => setSaveStatus(null), 5000);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Email Templates</h1>
-            <p className="text-muted-foreground">Proven email templates to boost your outreach success</p>
+    <div className="relative m-[5%]">
+      {/* Preview Overlay */}
+      {selectedTemplate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40" />
+      )}
+
+      <div className="relative z-50">
+        {selectedTemplate && (
+          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3/4 max-h-[80vh] bg-white rounded-lg shadow-xl overflow-hidden z-50 mt-8">
+            <div className="p-4 bg-gray-50 border-b flex justify-between items-center">
+              <h3 className="font-semibold">Email Preview</h3>
+              <button
+                onClick={() => setSelectedTemplate(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6 overflow-auto" style={{ maxHeight: 'calc(80vh - 60px)' }}>
+              <div
+                className="prose max-w-none"
+                dangerouslySetInnerHTML={{ __html: selectedTemplate || '' }}
+              />
+            </div>
           </div>
-          <Button className="bg-sales-gradient text-primary-foreground hover:opacity-90 flex items-center space-x-2">
-            <Plus className="w-4 h-4" />
-            <span>Create Template</span>
+        )}
+      </div>
+
+      <div className="flex justify-between items-center mb-4">
+        <Tabs defaultValue="templates" className="w-full">
+          <TabsList>
+            <TabsTrigger value="templates">Email Templates</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={fetchTemplates}
+            disabled={loading}
+            title="Refresh Templates"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+          <Button
+            onClick={handleSaveAll}
+            disabled={isSaving || templates.length === 0}
+            variant="outline"
+            className="mr-2"
+          >
+            {isSaving ? 'Saving...' : 'Save All Templates'}
+          </Button>
+          <Button
+            onClick={async () => {
+              setIsGenerating(true);
+              try {
+                const response = await fetch('https://n8n.warpdrivetech.in/webhook/generate-templet', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({ action: 'generate' })
+                });
+
+                if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                console.log('Generate template response:', result);
+
+                toast({
+                  title: 'Success',
+                  description: 'Template generation started successfully',
+                  variant: 'default',
+                });
+
+                // Refresh the templates after a short delay
+                setTimeout(fetchTemplates, 2000);
+
+              } catch (error) {
+                console.error('Error generating template:', error);
+                toast({
+                  title: 'Error',
+                  description: 'Failed to generate template. Please try again.',
+                  variant: 'destructive',
+                });
+              } finally {
+                setIsGenerating(false);
+              }
+            }}
+            disabled={isGenerating}
+            className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+          >
+            {isGenerating ? (
+              <>
+                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Generating...
+              </>
+            ) : (
+              'Generate Template'
+            )}
           </Button>
         </div>
-
-        {/* Stats Cards */}
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6 text-center">
-              <Mail className="w-8 h-8 text-primary mx-auto mb-3" />
-              <div className="text-2xl font-bold text-foreground mb-1">{templates.length}</div>
-              <div className="text-sm text-muted-foreground">Total Templates</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6 text-center">
-              <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center mx-auto mb-3">
-                <Star className="w-5 h-5 text-primary" />
-              </div>
-              <div className="text-2xl font-bold text-foreground mb-1">{templates.filter(t => t.isStarred).length}</div>
-              <div className="text-sm text-muted-foreground">Starred</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6 text-center">
-              <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center mx-auto mb-3">
-                <Send className="w-5 h-5 text-primary" />
-              </div>
-              <div className="text-2xl font-bold text-foreground mb-1">42%</div>
-              <div className="text-sm text-muted-foreground">Avg Open Rate</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6 text-center">
-              <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center mx-auto mb-3">
-                <Mail className="w-5 h-5 text-primary" />
-              </div>
-              <div className="text-2xl font-bold text-foreground mb-1">18%</div>
-              <div className="text-sm text-muted-foreground">Avg Response Rate</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filters */}
-        <Card className="mb-6">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                  placeholder="Search templates..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder="Filter by category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category.value} value={category.value}>
-                      {category.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Templates Grid */}
-        <div className="grid lg:grid-cols-2 gap-6">
-          {filteredTemplates.map((template) => (
-            <Card key={template.id} className="hover:shadow-shadow-soft transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <CardTitle className="text-lg">{template.name}</CardTitle>
-                      {template.isStarred && (
-                        <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                      )}
-                    </div>
-                    <Badge className={getCategoryColor(template.category)}>
-                      {categories.find(c => c.value === template.category)?.label}
-                    </Badge>
-                  </div>
-                  <div className="flex space-x-1">
-                    <Button size="sm" variant="ghost">
-                      <Star className="w-4 h-4" />
-                    </Button>
-                    <Button size="sm" variant="ghost">
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button size="sm" variant="ghost">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-sm font-medium text-foreground mb-1">Subject Line:</div>
-                    <div className="text-sm text-muted-foreground bg-accent/20 p-2 rounded">
-                      {template.subject}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="text-sm font-medium text-foreground mb-1">Preview:</div>
-                    <div className="text-sm text-muted-foreground">
-                      {template.preview}
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-4 pt-3 border-t border-border">
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-primary">{template.openRate}</div>
-                      <div className="text-xs text-muted-foreground">Open Rate</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-primary">{template.responseRate}</div>
-                      <div className="text-xs text-muted-foreground">Response Rate</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm font-medium text-foreground">{template.lastUsed}</div>
-                      <div className="text-xs text-muted-foreground">Last Used</div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex space-x-2 pt-2">
-                    <Button className="flex-1 bg-sales-gradient text-primary-foreground hover:opacity-90">
-                      <Send className="w-4 h-4 mr-2" />
-                      Use Template
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
       </div>
+      {saveStatus && (
+        <div className={`mb-4 p-3 rounded-md ${saveStatus.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+          {saveStatus.message}
+        </div>
+      )}
+      <Tabs defaultValue="templates" className="w-full">
+
+        <TabsContent value="templates">
+          <div className="border rounded-lg overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Change Request</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {templates.map((template) => (
+                  <TableRow
+                    key={template.row_number}
+                    className="hover:bg-gray-50"
+                  >
+                    <TableCell>{template.Company}</TableCell>
+                    <TableCell>
+                      {editingRow === template.row_number ? (
+                        <Select
+                          value={editingStatus}
+                          onValueChange={(value: 'Approved' | 'Rejected') => setEditingStatus(value)}
+                        >
+                          <SelectTrigger className="w-[120px]">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Approved">Approved</SelectItem>
+                            <SelectItem value="Rejected">Rejected</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <span className={template.status === 'Rejected' ? 'text-red-600' : 'text-green-600'}>
+                          {template.status || 'Pending'}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {editingRow === template.row_number && editingStatus === 'Rejected' ? (
+                        <Input
+                          value={editingChangeRequest}
+                          onChange={(e) => setEditingChangeRequest(e.target.value)}
+                          placeholder="Enter change request"
+                          className="w-full"
+                        />
+                      ) : template.status === 'Rejected' ? (
+                        <div className="max-w-xs truncate" title={template.changeRequest}>
+                          {template.changeRequest}
+                        </div>
+                      ) : null}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        {editingRow === template.row_number ? (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                const updatedTemplates = templates.map(t =>
+                                  t.row_number === template.row_number
+                                    ? {
+                                      ...t,
+                                      status: editingStatus,
+                                      changeRequest: editingStatus === 'Rejected' ? editingChangeRequest : undefined
+                                    }
+                                    : t
+                                );
+                                setTemplates(updatedTemplates);
+                                setEditingRow(null);
+                              }}
+                            >
+                              Save
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setEditingRow(null)}
+                            >
+                              Cancel
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingRow(template.row_number);
+                                setEditingStatus(template.status || 'Approved');
+                                setEditingChangeRequest(template.changeRequest || '');
+                              }}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePreview(template);
+                              }}
+                            >
+                              Preview
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
