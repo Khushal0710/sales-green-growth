@@ -18,9 +18,11 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-sales-gradient rounded-lg flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-primary-foreground" />
-            </div>
+            <img
+              src="/logo.png"
+              alt="Logo"
+              className="h-14 w-auto"
+            />
             <span className="text-xl font-bold text-primary">Inside Sales Agent</span>
           </div>
 
