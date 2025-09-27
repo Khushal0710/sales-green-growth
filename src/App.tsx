@@ -23,11 +23,11 @@ const App = () => (
           <Navbar />
           <div className="px-[5%] py-6">
             <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/salesforce" element={<Salesforce />} />
-            <Route path="/analysis" element={<Analysis />} />
-            <Route path="/leads" element={<Leads />} />
-            <Route path="/email-templates" element={<EmailTemplates />} />
+              <Route path="/" element={<Home />} />
+              <Route path="/salesforce" element={<Salesforce />} />
+              <Route path="/analysis" element={<Analysis />} />
+              <Route path="/leads" element={<Leads />} />
+              <Route path="/email-templates" element={<EmailTemplates />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

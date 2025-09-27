@@ -1,13 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { BarChart3, Users, Mail, Database, Home } from "lucide-react";
+import { BarChart3, Users, Mail, Home } from "lucide-react";
 
 const Navbar = () => {
   const location = useLocation();
 
   const navItems = [
     { path: "/", label: "Home", icon: Home },
-    { path: "/salesforce", label: "Salesforce", icon: Database },
     { path: "/analysis", label: "Analysis", icon: BarChart3 },
     { path: "/leads", label: "Leads", icon: Users },
     { path: "/email-templates", label: "Email Templates", icon: Mail },
